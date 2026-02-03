@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import Field
 from typing import Optional, List
 import secrets
 
@@ -7,8 +8,22 @@ class Settings(BaseSettings):
     # Debug
     DEBUG: bool = True
     
-    # Database
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/crm_db"
+    # Database (raw URL from environment, accepts DATABASE_URL from Railway)
+    DATABASE_URL_RAW: str = Field(
+        default="postgresql+asyncpg://postgres:postgres@localhost:5432/crm_db",
+        validation_alias="DATABASE_URL"
+    )
+    
+    @property
+    def DATABASE_URL(self) -> str:
+        """Convert DATABASE_URL to asyncpg format if needed."""
+        url = self.DATABASE_URL_RAW
+        # Railway uses postgresql:// but we need postgresql+asyncpg://
+        if url.startswith("postgres://"):
+            url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif url.startswith("postgresql://") and "+asyncpg" not in url:
+            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return url
     
     # Security
     SECRET_KEY: str = secrets.token_urlsafe(32)
