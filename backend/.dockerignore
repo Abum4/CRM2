@@ -1,0 +1,47 @@
+# Virtual environments
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# Tests (optional - uncomment if you don't want to include tests)
+# tests/
+
+# Uploads (if storing locally)
+uploads/*
+!uploads/.gitkeep
+
+# Alembic versions (keep structure)
+# alembic/versions/*
+# !alembic/versions/.gitkeep

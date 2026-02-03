@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+
+# Tests
+*.test.ts
+*.spec.ts
+vitest.config.ts
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Backend (separate service)
+backend/
