@@ -5,13 +5,32 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse
 import logging
 import os
+import sys
 from pathlib import Path
 
-from app.config import settings
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure logging FIRST
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    stream=sys.stdout
+)
 logger = logging.getLogger(__name__)
+
+# Log startup immediately
+logger.info("=" * 50)
+logger.info("CRM Backend Starting...")
+logger.info(f"Python version: {sys.version}")
+logger.info(f"PORT env: {os.environ.get('PORT', 'NOT SET')}")
+logger.info(f"DATABASE_URL env set: {bool(os.environ.get('DATABASE_URL'))}")
+logger.info("=" * 50)
+
+# Import config with error handling
+try:
+    from app.config import settings
+    logger.info("Config loaded successfully")
+except Exception as e:
+    logger.error(f"Failed to load config: {e}")
+    raise
 
 
 @asynccontextmanager
@@ -88,9 +107,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include API router
-from app.api.v1 import api_router
-app.include_router(api_router)
+# Include API router with error handling
+try:
+    from app.api.v1 import api_router
+    app.include_router(api_router)
+    logger.info("API router loaded successfully")
+except Exception as e:
+    logger.error(f"Failed to load API router: {e}")
+    import traceback
+    traceback.print_exc()
+    raise
 
 # Mount static files for uploads
 upload_path = Path(settings.UPLOAD_DIR)
