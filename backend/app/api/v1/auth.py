@@ -154,6 +154,16 @@ async def reset_password(
     )
 
 
+@router.get("/admin/login")
+async def admin_login_info():
+    """Info about admin login endpoint."""
+    return {
+        "message": "Admin login endpoint",
+        "method": "POST",
+        "required_fields": ["login", "password", "code"]
+    }
+
+
 @router.post("/admin/login", response_model=ApiResponse[AdminTokenResponse])
 async def admin_login(
     request: AdminLoginRequest,
