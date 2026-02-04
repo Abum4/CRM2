@@ -8,6 +8,13 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    proxy: {
+      '/api/v1': {
+        target: 'https://crm2-production.up.railway.app',
+        changeOrigin: true,
+        secure: false,
+      }
+    },
     hmr: {
       overlay: false,
     },
