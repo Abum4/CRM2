@@ -98,23 +98,19 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configure CORS - explicitly list all allowed origins
-cors_origins = [
-    "https://crm88.netlify.app",
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "http://localhost:8080",
-]
-# Add any origins from settings
-cors_origins.extend([o for o in settings.CORS_ORIGINS if o not in cors_origins])
-logger.info(f"CORS origins configured: {cors_origins}")
+# Configure CORS - allow all origins for debugging
+# TODO: Restrict to specific origins in production
+cors_origins = ["*"]
+logger.info(f"CORS: Allowing all origins for debugging")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_credentials=False,  # Must be False when using wildcard
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=600,
 )
 
 # Include API router with error handling
