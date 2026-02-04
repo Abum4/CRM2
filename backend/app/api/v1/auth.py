@@ -170,8 +170,16 @@ async def admin_login(
     db: AsyncSession = Depends(get_db)
 ):
     """Admin login with code."""
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Debug logging
+    logger.info(f"Admin login attempt - login: '{request.login}'")
+    logger.info(f"Expected login: '{settings.ADMIN_LOGIN}', Expected password length: {len(settings.ADMIN_PASSWORD)}")
+    
     # Verify credentials
     if request.login != settings.ADMIN_LOGIN or request.password != settings.ADMIN_PASSWORD:
+        logger.warning(f"Login failed - login match: {request.login == settings.ADMIN_LOGIN}, password match: {request.password == settings.ADMIN_PASSWORD}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Неверный логин или пароль"
