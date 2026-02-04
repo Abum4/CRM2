@@ -84,7 +84,13 @@ class ApiClient {
     }) =>
       this.request<ApiResponse<{ user: User; token: string }>>('/auth/register', {
         method: 'POST',
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          email: data.email,
+          password: data.password,
+          full_name: data.fullName,
+          phone: data.phone,
+          activity_type: data.activityType,
+        }),
       }),
 
     logout: () =>
