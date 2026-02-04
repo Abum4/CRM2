@@ -98,10 +98,20 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Configure CORS
+# Configure CORS - explicitly list all allowed origins
+cors_origins = [
+    "https://crm88.netlify.app",
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://localhost:8080",
+]
+# Add any origins from settings
+cors_origins.extend([o for o in settings.CORS_ORIGINS if o not in cors_origins])
+logger.info(f"CORS origins configured: {cors_origins}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
