@@ -1,7 +1,7 @@
 # Proxy API requests to Railway backend
 [[redirects]]
-  from = "/api/*"
-  to = "https://crm-production-f610.up.railway.app/api/:splat"
+  from = "/api/v1/*"
+  to = "https://crm-production-f610.up.railway.app/api/v1/:splat"
   status = 200
   force = true
 
