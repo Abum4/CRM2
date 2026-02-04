@@ -1,0 +1,5 @@
+[[redirects]]
+  from = "/api/*"
+  to = "https://crm-production-f610.up.railway.app/api/:splat"
+  status = 200
+  force = true
