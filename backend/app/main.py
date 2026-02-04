@@ -100,7 +100,8 @@ app = FastAPI(
 
 # Configure CORS - production settings
 cors_origins = [
-    "https://crm223.netlify.app",  # Production frontend
+    "https://crm223.netlify.app",  # Old domian
+    "https://crm555.netlify.app",  # New current domain
     "http://localhost:5173",        # Local development
     "http://localhost:3000",        # Alternative local
 ]

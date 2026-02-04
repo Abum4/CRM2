@@ -10,10 +10,13 @@ import { Eye, EyeOff, Shield } from 'lucide-react';
 import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { api } from '@/api';
 
+import { useAuth } from '@/contexts/AuthContext';
+
 export default function AdminLoginPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { refreshUser } = useAuth(); // Get refreshUser
 
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
@@ -23,7 +26,7 @@ export default function AdminLoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!login || !password || !code) {
       toast({
         variant: 'destructive',
@@ -38,6 +41,7 @@ export default function AdminLoginPage() {
       const response = await api.auth.adminLogin(login, password, code);
       if (response.success) {
         api.setToken(response.data.token);
+        await refreshUser(); // Load user profile immediately
         navigate('/admin/dashboard');
       }
     } catch (error) {
@@ -56,7 +60,7 @@ export default function AdminLoginPage() {
       <div className="absolute top-4 right-4">
         <LanguageSwitcher />
       </div>
-      
+
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
@@ -67,7 +71,7 @@ export default function AdminLoginPage() {
           <CardTitle className="text-2xl font-bold">{t('admin.login')}</CardTitle>
           <CardDescription>{t('admin.codeFromTelegram')}</CardDescription>
         </CardHeader>
-        
+
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -80,7 +84,7 @@ export default function AdminLoginPage() {
                 required
               />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="password">{t('auth.password')}</Label>
               <div className="relative">
@@ -124,9 +128,9 @@ export default function AdminLoginPage() {
               </p>
             </div>
 
-            <Button 
-              type="submit" 
-              className="w-full" 
+            <Button
+              type="submit"
+              className="w-full"
               disabled={isLoading}
             >
               {isLoading ? t('common.loading') : t('auth.login')}
