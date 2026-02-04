@@ -1,9 +1,5 @@
-[build]
-  command = "npm run build"
-  publish = "dist"
-
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
+  from = "/api/*"
+  to = "https://crm-production-f610.up.railway.app/api/:splat"
   status = 200
   force = true
