@@ -193,22 +193,40 @@ async def admin_login(
         )
     
     # Find or create admin user
-    # Use .com instead of .local because Pydantic email validation rejects .local
-    admin_email = f"{settings.ADMIN_LOGIN}@admin.com"
+    # Check for both new and legacy email formats
+    admin_email_new = f"{settings.ADMIN_LOGIN}@admin.com"
+    admin_email_legacy = f"{settings.ADMIN_LOGIN}@admin.local"
+    
     result = await db.execute(
-        select(User).where(User.email == admin_email)
+        select(User).where(User.email.in_([admin_email_new, admin_email_legacy]))
     )
     admin_user = result.scalar_one_or_none()
     
     if not admin_user:
+        # Create new admin
         admin_user = User(
-            email=admin_email,
+            email=admin_email_new,
             password_hash=get_password_hash(settings.ADMIN_PASSWORD),
             full_name="Администратор",
             phone="0000000000",
             activity_type="declarant",
             role=UserRole.ADMIN
         )
+        db.add(admin_user)
+        try:
+            await db.commit()
+            await db.refresh(admin_user)
+        except Exception as e:
+            await db.rollback()
+            # If race condition, try to fetch again
+            result = await db.execute(select(User).where(User.email == admin_email_new))
+            admin_user = result.scalar_one_or_none()
+            if not admin_user:
+                raise HTTPException(status_code=500, detail="Failed to create admin user")
+    elif admin_user.email == admin_email_legacy:
+        # Migrate legacy user to new email format
+        logger.info(f"Migrating admin email from {admin_email_legacy} to {admin_email_new}")
+        admin_user.email = admin_email_new
         db.add(admin_user)
         await db.commit()
         await db.refresh(admin_user)
