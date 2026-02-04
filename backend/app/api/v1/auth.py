@@ -193,14 +193,16 @@ async def admin_login(
         )
     
     # Find or create admin user
+    # Use .com instead of .local because Pydantic email validation rejects .local
+    admin_email = f"{settings.ADMIN_LOGIN}@admin.com"
     result = await db.execute(
-        select(User).where(User.email == f"{settings.ADMIN_LOGIN}@admin.local")
+        select(User).where(User.email == admin_email)
     )
     admin_user = result.scalar_one_or_none()
     
     if not admin_user:
         admin_user = User(
-            email=f"{settings.ADMIN_LOGIN}@admin.local",
+            email=admin_email,
             password_hash=get_password_hash(settings.ADMIN_PASSWORD),
             full_name="Администратор",
             phone="0000000000",
