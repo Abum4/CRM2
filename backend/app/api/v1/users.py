@@ -238,6 +238,28 @@ async def unblock_user(
     return ApiResponse(data=UserWithRoleResponse.model_validate(user), success=True)
 
 
+@router.delete("/{user_id}", response_model=ApiResponse[None])
+async def delete_user(
+    user_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin())
+):
+    """Delete user permanently (admin only)."""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Пользователь не найден"
+        )
+        
+    await db.delete(user)
+    await db.commit()
+    
+    return ApiResponse(data=None, success=True, message="Пользователь удален")
+
+
 @router.post("/{user_id}/remove", response_model=ApiResponse[None])
 async def remove_user(
     user_id: UUID,

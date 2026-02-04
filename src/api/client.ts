@@ -210,6 +210,11 @@ class ApiClient {
         body: JSON.stringify({ reassignToId }),
       }),
 
+    delete: (id: string) =>
+      this.request<ApiResponse<null>>(`/users/${id}`, {
+        method: 'DELETE',
+      }),
+
     assignRole: (id: string, role: 'director' | 'senior' | 'employee') =>
       this.request<ApiResponse<UserWithRole>>(`/users/${id}/role`, {
         method: 'POST',

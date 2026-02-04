@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,40 +44,52 @@ import {
   Phone,
   Mail,
 } from 'lucide-react';
-
-interface UserItem {
-  id: string;
-  fullName: string;
-  email: string;
-  phone: string;
-  role: 'director' | 'senior' | 'employee';
-  companyName?: string;
-  activityType: 'declarant' | 'certification';
-  isBlocked: boolean;
-  createdAt: string;
-}
+import { api } from '@/api';
+import { UserWithRole, UserRole } from '@/types';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AdminUsersPage() {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [isMessageDialogOpen, setIsMessageDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<UserItem | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserWithRole | null>(null);
   const [message, setMessage] = useState('');
 
-  // Mock data
-  const users: UserItem[] = [
-    { id: '1', fullName: 'Иванов Иван Иванович', email: 'ivanov@company.com', phone: '+998 90 123 45 67', role: 'director', companyName: 'ООО "Декларант"', activityType: 'declarant', isBlocked: false, createdAt: '15.01.2026' },
-    { id: '2', fullName: 'Петрова Мария Александровна', email: 'petrova@company.com', phone: '+998 90 234 56 78', role: 'senior', companyName: 'ООО "Декларант"', activityType: 'declarant', isBlocked: false, createdAt: '16.01.2026' },
-    { id: '3', fullName: 'Сидоров Алексей Викторович', email: 'sidorov@cert.com', phone: '+998 90 345 67 89', role: 'director', companyName: 'ООО "Сертификация"', activityType: 'certification', isBlocked: false, createdAt: '10.01.2026' },
-    { id: '4', fullName: 'Козлова Елена Сергеевна', email: 'kozlova@company.com', phone: '+998 90 456 78 90', role: 'employee', companyName: 'ООО "Декларант"', activityType: 'declarant', isBlocked: true, createdAt: '20.01.2026' },
-  ];
+  const [page, setPage] = useState(1);
+  const [users, setUsers] = useState<UserWithRole[]>([]);
+  const [total, setTotal] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchUsers = async () => {
+    setIsLoading(true);
+    try {
+      const response = await api.users.getAll(page);
+      if (response && response.data) {
+        setUsers(response.data);
+        setTotal(response.total || 0);
+      }
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: t('common.error'),
+        description: 'Failed to load users'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, [page]);
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
-  const getRoleIcon = (role: UserItem['role']) => {
+  const getRoleIcon = (role: UserRole) => {
     switch (role) {
       case 'director': return Crown;
       case 'senior': return Star;
@@ -85,35 +97,67 @@ export default function AdminUsersPage() {
     }
   };
 
-  const getRoleBadge = (role: UserItem['role']) => {
+  const getRoleBadge = (role: UserRole) => {
     const Icon = getRoleIcon(role);
     switch (role) {
       case 'director':
         return <Badge variant="default" className="gap-1"><Icon className="h-3 w-3" />{t('roles.director')}</Badge>;
       case 'senior':
         return <Badge variant="secondary" className="gap-1"><Icon className="h-3 w-3" />{t('roles.senior')}</Badge>;
+      case 'admin':
+        return <Badge variant="destructive" className="gap-1"><Icon className="h-3 w-3" />Admin</Badge>;
       default:
         return <Badge variant="outline" className="gap-1"><Icon className="h-3 w-3" />{t('roles.employee')}</Badge>;
     }
   };
 
-  const handleBlock = (user: UserItem) => {
-    console.log('Block/unblock user:', user.id);
+  const handleBlock = async (user: UserWithRole) => {
+    try {
+      if (user.isBlocked) {
+        await api.users.unblock(user.id);
+        toast({ title: "Пользователь разблокирован" });
+      } else {
+        await api.users.block(user.id);
+        toast({ title: "Пользователь заблокирован" });
+      }
+      fetchUsers();
+    } catch (error) {
+      toast({ variant: 'destructive', title: "Ошибка при изменении статуса" });
+    }
   };
 
-  const handleDelete = (user: UserItem) => {
-    console.log('Delete user:', user.id);
+  const handleDelete = async (user: UserWithRole) => {
+    if (!confirm('Вы уверены, что хотите удалить этого пользователя навсегда?')) return;
+    try {
+      await api.users.delete(user.id);
+      toast({ title: "Пользователь удален" });
+      fetchUsers();
+    } catch (error) {
+      toast({ variant: 'destructive', title: "Ошибка удаления" });
+    }
   };
 
-  const handleAssignRole = (user: UserItem, role: 'director' | 'senior') => {
-    console.log('Assign role:', user.id, role);
+  const handleAssignRole = async (user: UserWithRole, role: 'director' | 'senior' | 'employee') => {
+    try {
+      await api.users.assignRole(user.id, role);
+      toast({ title: "Роль обновлена" });
+      fetchUsers();
+    } catch (error) {
+      toast({ variant: 'destructive', title: "Ошибка назначения роли" });
+    }
   };
 
-  const handleSendMessage = () => {
-    console.log('Send message to:', selectedUser?.id, message);
-    setIsMessageDialogOpen(false);
-    setSelectedUser(null);
-    setMessage('');
+  const handleSendMessage = async () => {
+    if (!selectedUser) return;
+    try {
+      await api.users.sendMessage(selectedUser.id, message);
+      toast({ title: "Сообщение отправлено" });
+      setIsMessageDialogOpen(false);
+      setSelectedUser(null);
+      setMessage('');
+    } catch (error) {
+      toast({ variant: 'destructive', title: "Ошибка отправки" });
+    }
   };
 
   const filteredUsers = users.filter((user) => {
@@ -121,8 +165,7 @@ export default function AdminUsersPage() {
       const query = searchQuery.toLowerCase();
       return (
         user.fullName.toLowerCase().includes(query) ||
-        user.email.toLowerCase().includes(query) ||
-        user.companyName?.toLowerCase().includes(query)
+        user.email.toLowerCase().includes(query)
       );
     }
     return true;
@@ -130,7 +173,12 @@ export default function AdminUsersPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">{t('menu.users')}</h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">{t('menu.users')}</h1>
+        <Button variant="outline" onClick={fetchUsers} disabled={isLoading}>
+          Обновить
+        </Button>
+      </div>
 
       {/* Message Dialog */}
       <Dialog open={isMessageDialogOpen} onOpenChange={setIsMessageDialogOpen}>
@@ -141,7 +189,7 @@ export default function AdminUsersPage() {
               Сообщение для {selectedUser?.fullName}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="py-4">
             <Label>Сообщение</Label>
             <Textarea
@@ -169,7 +217,7 @@ export default function AdminUsersPage() {
           <DialogHeader>
             <DialogTitle>Информация о пользователе</DialogTitle>
           </DialogHeader>
-          
+
           {selectedUser && (
             <div className="space-y-4">
               <div className="flex items-center gap-4">
@@ -193,14 +241,10 @@ export default function AdminUsersPage() {
                   <Phone className="h-4 w-4 text-muted-foreground" />
                   {selectedUser.phone}
                 </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                  {selectedUser.companyName || 'Без компании'}
-                </div>
               </div>
 
               <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <span>Дата регистрации: {selectedUser.createdAt}</span>
+                <span>Дата регистрации: {new Date(selectedUser.createdAt).toLocaleDateString()}</span>
                 {selectedUser.isBlocked && <Badge variant="destructive">Заблокирован</Badge>}
               </div>
             </div>
@@ -231,7 +275,6 @@ export default function AdminUsersPage() {
               <TableRow>
                 <TableHead>Пользователь</TableHead>
                 <TableHead>Роль</TableHead>
-                <TableHead>Компания</TableHead>
                 <TableHead>Тип</TableHead>
                 <TableHead>Статус</TableHead>
                 <TableHead>Дата</TableHead>
@@ -239,93 +282,101 @@ export default function AdminUsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow 
-                  key={user.id} 
-                  className={`cursor-pointer ${user.isBlocked ? 'opacity-60' : ''}`}
-                  onClick={() => {
-                    setSelectedUser(user);
-                    setIsDetailDialogOpen(true);
-                  }}
-                >
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                          {getInitials(user.fullName)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">{user.fullName}</p>
-                        <p className="text-xs text-muted-foreground">{user.email}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{getRoleBadge(user.role)}</TableCell>
-                  <TableCell>{user.companyName || '—'}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">
-                      {user.activityType === 'declarant' ? t('auth.declarant') : t('auth.certification')}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {user.isBlocked ? (
-                      <Badge variant="destructive">Заблокирован</Badge>
-                    ) : (
-                      <Badge variant="default">Активен</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{user.createdAt}</TableCell>
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => {
-                          setSelectedUser(user);
-                          setIsMessageDialogOpen(true);
-                        }}>
-                          <MessageSquare className="h-4 w-4 mr-2" />
-                          {t('admin.sendMessage')}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleAssignRole(user, 'director')}>
-                          <Crown className="h-4 w-4 mr-2" />
-                          {t('admin.assignDirector')}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleAssignRole(user, 'senior')}>
-                          <Star className="h-4 w-4 mr-2" />
-                          {t('admin.assignSenior')}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleBlock(user)}>
-                          {user.isBlocked ? (
-                            <>
-                              <Unlock className="h-4 w-4 mr-2" />
-                              Разблокировать
-                            </>
-                          ) : (
-                            <>
-                              <Ban className="h-4 w-4 mr-2" />
-                              Заблокировать
-                            </>
-                          )}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="text-destructive"
-                          onClick={() => handleDelete(user)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          {t('common.delete')}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">Загрузка...</TableCell>
                 </TableRow>
-              ))}
+              ) : filteredUsers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">Пользователи не найдены</TableCell>
+                </TableRow>
+              ) : (
+                filteredUsers.map((user) => (
+                  <TableRow
+                    key={user.id}
+                    className={`cursor-pointer ${user.isBlocked ? 'opacity-60' : ''}`}
+                    onClick={() => {
+                      setSelectedUser(user);
+                      setIsDetailDialogOpen(true);
+                    }}
+                  >
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                            {getInitials(user.fullName)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium">{user.fullName}</p>
+                          <p className="text-xs text-muted-foreground">{user.email}</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>{getRoleBadge(user.role)}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {user.activityType === 'declarant' ? t('auth.declarant') : t('auth.certification')}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {user.isBlocked ? (
+                        <Badge variant="destructive">Заблокирован</Badge>
+                      ) : (
+                        <Badge variant="default">Активен</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => {
+                            setSelectedUser(user);
+                            setIsMessageDialogOpen(true);
+                          }}>
+                            <MessageSquare className="h-4 w-4 mr-2" />
+                            {t('admin.sendMessage')}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleAssignRole(user, 'director')}>
+                            <Crown className="h-4 w-4 mr-2" />
+                            {t('admin.assignDirector')}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleAssignRole(user, 'senior')}>
+                            <Star className="h-4 w-4 mr-2" />
+                            {t('admin.assignSenior')}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleBlock(user)}>
+                            {user.isBlocked ? (
+                              <>
+                                <Unlock className="h-4 w-4 mr-2" />
+                                Разблокировать
+                              </>
+                            ) : (
+                              <>
+                                <Ban className="h-4 w-4 mr-2" />
+                                Заблокировать
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => handleDelete(user)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            {t('common.delete')}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                )))}
             </TableBody>
           </Table>
         </CardContent>
