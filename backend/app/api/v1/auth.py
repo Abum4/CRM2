@@ -200,10 +200,39 @@ async def admin_login(
     result = await db.execute(
         select(User).where(User.email.in_([admin_email_new, admin_email_legacy]))
     )
-    admin_user = result.scalar_one_or_none()
+    # Get all matching users
+    users = result.scalars().all()
     
-    if not admin_user:
-        # Create new admin
+    # Find correct and legacy users
+    correct_user = next((u for u in users if u.email == admin_email_new), None)
+    legacy_user = next((u for u in users if u.email == admin_email_legacy), None)
+    
+    admin_user = None
+
+    if correct_user:
+        # If correct user exists, use it
+        admin_user = correct_user
+        # Optionally delete legacy if both exist (cleanup)
+        if legacy_user:
+             logger.info(f"Removing duplicate legacy admin user: {legacy_user.email}")
+             await db.delete(legacy_user)
+             await db.commit()
+    elif legacy_user:
+        # Only legacy exists - migrate it
+        logger.info(f"Migrating admin email from {admin_email_legacy} to {admin_email_new}")
+        legacy_user.email = admin_email_new
+        db.add(legacy_user)
+        try:
+            await db.commit()
+            await db.refresh(legacy_user)
+            admin_user = legacy_user
+        except Exception as e:
+            # Handle unique constraint violation if race condition
+            await db.rollback()
+            result = await db.execute(select(User).where(User.email == admin_email_new))
+            admin_user = result.scalar_one_or_none()
+    else:
+        # creates new admin if none exists
         admin_user = User(
             email=admin_email_new,
             password_hash=get_password_hash(settings.ADMIN_PASSWORD),
@@ -216,20 +245,13 @@ async def admin_login(
         try:
             await db.commit()
             await db.refresh(admin_user)
-        except Exception as e:
+        except Exception:
             await db.rollback()
-            # If race condition, try to fetch again
             result = await db.execute(select(User).where(User.email == admin_email_new))
             admin_user = result.scalar_one_or_none()
-            if not admin_user:
-                raise HTTPException(status_code=500, detail="Failed to create admin user")
-    elif admin_user.email == admin_email_legacy:
-        # Migrate legacy user to new email format
-        logger.info(f"Migrating admin email from {admin_email_legacy} to {admin_email_new}")
-        admin_user.email = admin_email_new
-        db.add(admin_user)
-        await db.commit()
-        await db.refresh(admin_user)
+            
+    if not admin_user:
+         raise HTTPException(status_code=500, detail="Failed to retrieve admin user")
     
     token = create_access_token({"sub": str(admin_user.id), "is_admin": True})
     
