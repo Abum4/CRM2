@@ -39,8 +39,8 @@ class Settings(BaseSettings):
     ADMIN_TELEGRAM_CHAT_ID: Optional[str] = None
     
     # CORS
-    FRONTEND_URL: str = "http://localhost:5173"
-    CORS_ORIGINS_STR: str = "http://localhost:5173,http://localhost:3000"
+    FRONTEND_URL: str = "https://crm88.netlify.app"
+    CORS_ORIGINS_STR: str = "https://crm88.netlify.app,http://localhost:5173,http://localhost:3000"
     
     @property
     def CORS_ORIGINS(self) -> List[str]:
